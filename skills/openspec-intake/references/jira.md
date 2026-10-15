@@ -5,8 +5,9 @@ Jira を使う場合に読む。[共通の Jira 取得手順](../../openspec-iss
 ## 作成・編集前の確認
 
 - サイト、作成先 project、Epic / Story / PBI 相当の issue type、階層、AC 専用フィールド、必要な作成フィールドを特定する。board ID と作成先 project は同一ではない。
-- 状態にかかわらず既存要求を検索し、Cloud の `nextPageToken`、Data Center の対応するページネーション等で最後まで取得する。検索範囲を絞った場合は、その範囲でしか重複照合していないことを示す。
-- 最新の本文・AC・状態・resolution・親・更新日時を読む。Done / resolution があるだけで今回の要求の実装済み判定をしない。進行中の change と実装の根拠も確認する。
+- プロジェクト規約とワークフローでクローズ扱いの状態を確認し、それを除く条件を JQL に付ける。完了カテゴリをクローズ扱いにする環境なら、`project = APP AND statusCategory != Done` のように検索する。Epic・親子・関連チケットの検索にも同じ条件を付け、`Closed` という名前だけで判定しない。
+- クローズされていない範囲を、Cloud の `nextPageToken`、Data Center の対応するページネーション等で最後まで取得する。検索範囲を絞った場合は、その範囲でしか重複照合していないことを示す。クローズ済みチケットが混ざっても、本文の調査や追加取得はしない。
+- 対象チケットの最新の本文・AC・状態・resolution・親・更新日時を読む。実現済みかどうかは、進行中の change や仕様・実装の根拠に照らして判断する。親がクローズ済みなら、その本文・子一覧は取得しない。
 - 接続先 API / ツールで、作成時の必須フィールドと編集可能なフィールドを確認する。必要な役割、種別、親や権限が不明なら、書き込み前に解決する。管理設定、Issue type、custom field 自体は作成しない。
 
 Cloud REST v3 の読み取り先は次のとおり。接続済みクライアントの API ベース URL からの相対パスを示す。
@@ -49,6 +50,7 @@ Epic を先に作り、返された実際のキーを PBI の親に使う。環�
 
 Cloud の基本操作は `PUT /rest/api/3/issue/{issueIdOrKey}`。直前の読み取りを基に、変更する本文・専用 AC フィールドだけを送る。既存 ADF ノード、マーク、チェック状態と条件の順序を保持する。
 
+- 追記・紐付けの直前に、対象チケットと親の状態を再確認する。クローズ済みに変わっていたら、そのチケットに関わる書き込みを止める。
 - AC が専用フィールドなら、その末尾へ追記する。description にだけ追記して専用フィールドが古いままにならないようにする。
 - 親が同じなら変更せず、親がない場合にだけ、対応するネイティブフィールドで紐付ける。既存親の移動は Intake の承認範囲に含めない。
 - Epic 一覧や関連チケットの備考も、最新内容に追加してから再取得する。ツール / API が保証しない原子的な更新やバージョン検査を想定しない。
@@ -60,4 +62,4 @@ Jira board に表示されるかはフィルタで決まる。GitHub Project の
 
 親子関係・本文・AC と、必要な追跡先での扱いを確認してから成功を報告する。一部が未対応 / 未反映ならチケットの作成成功と分ける。返すのは Epic と PBI の実際のキーであり、board 番号や内部の数字 ID を代用しない。
 
-公式仕様: [Cloud issue の作成・編集・メタデータ](https://developer.atlassian.com/cloud/jira/platform/rest/v3/api-group-issues/)、[Cloud fields](https://developer.atlassian.com/cloud/jira/platform/rest/v3/api-group-issue-fields/)、[Cloud 検索](https://developer.atlassian.com/cloud/jira/platform/rest/v3/api-group-issue-search/)、[Data Center メタデータと作成の例](https://developer.atlassian.com/server/jira/platform/jira-rest-api-examples/)。
+公式仕様: [JQL の状態・解決状況フィールド](https://support.atlassian.com/jira-software-cloud/docs/jql-fields/)、[Cloud issue の作成・編集・メタデータ](https://developer.atlassian.com/cloud/jira/platform/rest/v3/api-group-issues/)、[Cloud fields](https://developer.atlassian.com/cloud/jira/platform/rest/v3/api-group-issue-fields/)、[Cloud 検索](https://developer.atlassian.com/cloud/jira/platform/rest/v3/api-group-issue-search/)、[Data Center メタデータと作成の例](https://developer.atlassian.com/server/jira/platform/jira-rest-api-examples/)。

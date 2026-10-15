@@ -6,15 +6,15 @@ GitHub を使う場合に読む。[共通の GitHub 取得手順](../../openspec
 
 ## 書き込み前の照合
 
-全状態の一覧は、ページ上限で切れない方法で取得する。例として REST の結果を専用一時領域へ保存する。
+クローズされていない Issue だけを、`state=open` を指定して最後のページまで取得する。例として REST の結果を専用一時領域へ保存する。
 
 ```bash
 GH_HOST="<host>" gh api --paginate --slurp \
-  "repos/<owner>/<repo>/issues?state=all&per_page=100" \
+  "repos/<owner>/<repo>/issues?state=open&per_page=100" \
   > "<temporary-directory>/issues.json"
 ```
 
-REST の一覧には PR も含まれるため、`pull_request` を持つ要素は候補 PBI から除く。`--slurp` の結果は全ページをまとめる。番号・タイトル・状態・`state_reason`・ラベル・URL・更新日時で候補を絞って本文を読み、途中のページ取得に失敗しても「残りなし」とは扱わない。
+REST の一覧には PR も含まれるため、`pull_request` を持つ要素は候補 PBI から除く。状態が `open` の Issue を対象に、番号・タイトル・ラベル・URL・更新日時で候補を絞って本文を読む。`gh issue list` や検索を使う場合も、`--state open` や `is:open` で同じ範囲に絞る。`--slurp` の結果は全ページをまとめ、途中のページ取得に失敗しても「残りなし」とは扱わない。
 
 ```bash
 GH_HOST="<host>" gh issue view "<number>" --repo "<owner>/<repo>" \
@@ -25,7 +25,9 @@ GH_HOST="<host>" gh api --paginate --slurp \
 
 新規 PBI / Epic に付ける `pbi`、`epic`、`role:*` 等は、プロジェクト規約と実在するラベルを照合する。存在しないラベルを作ったり、既存チケットのラベルを変更したりしない。ラベルではなく Issue type を使う運用なら、実際のスキーマと対応ツールで扱う。必要な分類を無断で省略しない。
 
-Epic の子と Project 項目は共通の取得手順で全ページ読む。既存 PBI の親も確認する。
+Epic の子と Project 項目は共通の取得手順で全ページ読み、Issue の状態で候補を絞る。Project のクエリでは `content` の Issue 選択項目に `state` を加える。Epic・子・関連 Issue は `OPEN` のものだけを調べ、`CLOSED` の本文を追加取得しない。Project の Status や項目の archive 状態を、Issue 自体の `OPEN` / `CLOSED` と混同しない。
+
+DraftIssue を扱う運用では、クローズ相当の判定方法を確認する。判定できなければ候補から外す。既存 PBI の親も状態を確認し、クローズ済みなら親の本文・子一覧は取得しない。
 
 ```bash
 GH_HOST="<host>" gh api graphql \
@@ -35,8 +37,8 @@ GH_HOST="<host>" gh api graphql \
     query($owner: String!, $repo: String!, $number: Int!) {
       repository(owner: $owner, name: $repo) {
         issue(number: $number) {
-          id number url updatedAt
-          parent { id number url }
+          id number url state updatedAt
+          parent { id number url state }
         }
       }
     }'
@@ -46,7 +48,7 @@ GraphQL に `errors` がある場合や、repository / issue 自体が null の�
 
 ## 新規作成と追跡先への登録
 
-新規 Epic と PBI は [標準書式](ticket-format.md) またはプロジェクト書式で本文を用意する。作成直前にも今回の要望と一致する既存チケットがないか確認する。
+新規 Epic と PBI は [標準書式](ticket-format.md) またはプロジェクト書式で本文を用意する。作成直前にも、クローズされていない範囲で今回の要望と一致する既存チケットがないか確認する。
 
 ```bash
 GH_HOST="<host>" gh issue create --repo "<owner>/<repo>" \
@@ -69,7 +71,7 @@ GitHub Project URL しかなく作成先リポジトリが未確定なら、Issu
 
 ## Epic の sub-issue として紐付ける
 
-親と子の URL / node ID、現在の親を照合する。同じ親なら省略し、別の親がある場合は自動で移動しない。親がない場合だけ、確認済み node ID で追加する。
+親と子の URL / node ID、現在の親、Issue の状態を照合する。親か子が `CLOSED` なら紐付けを止める。同じ親なら省略し、別の親がある場合は自動で移動しない。親がない場合だけ、確認済み node ID で追加する。
 
 ```bash
 GH_HOST="<host>" gh api graphql \
@@ -88,7 +90,7 @@ GH_HOST="<host>" gh api graphql \
 
 ## 既存本文への追記
 
-編集直前に `gh issue view` で最新本文・状態・更新日時を再取得し、追記先が未完了か、計画同期が必要かも再評価する。最新本文を保持したまま必要な行だけを加え、一時ファイルへ保存する。
+編集直前に `gh issue view` で最新本文・状態・更新日時を再取得する。`CLOSED` に変わっていれば追記を止める。`OPEN` なら計画同期が必要かも再評価し、最新本文を保持したまま必要な行だけを加え、一時ファイルへ保存する。
 
 ```bash
 GH_HOST="<host>" gh issue edit "<number>" --repo "<owner>/<repo>" \
@@ -97,4 +99,4 @@ GH_HOST="<host>" gh issue edit "<number>" --repo "<owner>/<repo>" \
 
 この操作は本文全体を置き換えるため、古い本文を使わない。`gh issue edit` が同時更新を確実に検出するとは想定せず、更新後に追記と既存内容の保持を確認する。Epic の一覧や関連チケットの追記も同じ手順で行う。コメント、既存ラベル、担当者、状態を変更するオプションは付けない。
 
-公式仕様: [gh api](https://cli.github.com/manual/gh_api)、[gh issue create](https://cli.github.com/manual/gh_issue_create)、[gh issue edit](https://cli.github.com/manual/gh_issue_edit)、[Project 登録](https://cli.github.com/manual/gh_project_item-add)、[GraphQL addSubIssue / parent](https://docs.github.com/en/graphql/reference/issues)。Enterprise の対応状況は実行時に確認する。
+公式仕様: [Issue 一覧の状態指定](https://docs.github.com/en/rest/issues/issues#list-repository-issues)、[gh api](https://cli.github.com/manual/gh_api)、[gh issue create](https://cli.github.com/manual/gh_issue_create)、[gh issue edit](https://cli.github.com/manual/gh_issue_edit)、[Project 登録](https://cli.github.com/manual/gh_project_item-add)、[GraphQL addSubIssue / parent](https://docs.github.com/en/graphql/reference/issues)。Enterprise の対応状況は実行時に確認する。
