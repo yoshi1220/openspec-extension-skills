@@ -1,0 +1,10 @@
+# ローカルのキャッシュと作業用ファイル
+.cache/
+.local/
+
+# インストールした依存パッケージ
+node_modules/
+
+# OS が生成するファイル
+.DS_Store
+Thumbs.db
