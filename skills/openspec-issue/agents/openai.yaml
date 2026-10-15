@@ -1,0 +1,4 @@
+interface:
+  display_name: "OpenSpec: Issue"
+  short_description: "Jira・GitHub などのチケットから OpenSpec の計画成果物を作成"
+  default_prompt: "$openspec-issue を使い、指定したチケットから受け入れ条件を追跡できる OpenSpec change を作成してください。"

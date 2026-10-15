@@ -1,0 +1,4 @@
+interface:
+  display_name: "OpenSpec: Intake"
+  short_description: "要望と既存チケットを照合し、Epic・PBI の作成・追記・紐付けを行う"
+  default_prompt: "$openspec-intake を使い、指定した要望を既存チケットと照合して必要な Epic・PBI を整理してください。"
