@@ -1,6 +1,6 @@
 # openspec-extension-skills
 
-チケット管理と OpenSpec の計画作成をつなぐ、追加スキルです。GitHub Issues / Projects、Jira などを対象に、既存の OpenSpec スキルと組み合わせて使います。
+チケット管理、OpenSpec の計画作成、計画の明確化をつなぐ追加スキルです。GitHub Issues / Projects、Jira などから要求を取り込み、既存の OpenSpec スキルと組み合わせて使います。
 
 ## スキル一覧
 
@@ -8,21 +8,25 @@
 | --- | --- | --- |
 | [openspec-intake](skills/openspec-intake/SKILL.md) | 自由文の機能要望 | 既存チケット・仕様・実装と照合し、必要な PBI / Story・Epic の作成、追記、紐付けを行う |
 | [openspec-issue](skills/openspec-issue/SKILL.md) | チケット番号・キー・URL | チケットを取り込み、既存の `openspec-propose` の手順で change の計画成果物を作る |
+| [openspec-grill-me](skills/openspec-grill-me/SKILL.md) | 現在のアクティブな change・重点確認領域 | Propose / Issue 後、apply 前に存在する仕様・design・tasks を選択式質問で明確化する |
 
-Intake はチケット整理まで、Issue は計画作成までを担当します。どちらも実装を自動で始めません。
+Intake はチケット整理まで、Issue は計画作成まで、Grill Me は既存計画の明確化までを担当します。実装は自動で始めません。
 
 ## 導入
 
-`skills/` 内の2つのディレクトリを、利用先の既存の `openspec-*` スキルと同じ場所に配置してください。スキル間の相対リンクは、この配置を前提にしています。
+`skills/` 内の3つのディレクトリを、利用先の既存の `openspec-*` スキルと同じ場所に配置してください。スキル間の相対リンクは、この配置を前提にしています。
 
 既存スキルが `<project>/.agents/skills/` にある場合は、次のように配置できます。`/path/to/project` は利用先のパスに置き換えてください。
 
 ```bash
 git clone https://github.com/yoshi1220/openspec-extension-skills.git
-cp -R openspec-extension-skills/skills/openspec-intake openspec-extension-skills/skills/openspec-issue /path/to/project/.agents/skills/
+cp -R openspec-extension-skills/skills/openspec-intake \
+  openspec-extension-skills/skills/openspec-issue \
+  openspec-extension-skills/skills/openspec-grill-me \
+  /path/to/project/.agents/skills/
 ```
 
-Issue には OpenSpec CLI と、同じ配置先の `openspec-propose` が必要です。計画の更新や実装には、既存の `openspec-update-change`、`openspec-apply-change` などを使います。Intake は、OpenSpec が未導入でも、参照できる資料を使ってチケットを整理できます。
+Issue には OpenSpec CLI と、同じ配置先の `openspec-propose` が必要です。計画の更新や実装には、既存の `openspec-update-change`、`openspec-apply-change` などを使います。Intake は、OpenSpec が未導入でも、参照できる資料を使ってチケットを整理できます。Grill Me には OpenSpec CLI と計画成果物を持つ既存 change が必要です。別のリポジトリにある Spec Kit スキルへの依存はありません。
 
 チケットサービスへのアクセスには、実行環境の接続済みツール、認証済み CLI、公式 API を使います。他のサービスも対象にできますが、必要な取得・作成・紐付け操作を実行できる接続手段が必要です。
 
@@ -59,7 +63,13 @@ Codex では、次のように依頼します。チケットが既にあれば I
    $openspec-issue APP-123
    ```
 
-3. 計画をレビューし、既存のスキルで実装を始める。
+3. 計画を質問形式で詰め、成果物間の矛盾や受け入れ条件の抜けを解消する。
+
+   ```text
+   $openspec-grill-me
+   ```
+
+4. 計画の確認を終えたら、既存のスキルで実装を始める。
 
    ```text
    $openspec-apply-change <change-name>
@@ -72,5 +82,7 @@ Intake が確認するのは、クローズされていない既存チケット�
 仕様・実装との照合は引き続き行い、実現済みの要望については新規作成を省きます。進行中の要求に影響する追記を行った場合は、次の apply 前に `$openspec-update-change <change-name>` で計画を同期します。
 
 Issue は受け入れ条件（AC）の原文を保持し、Scenario・Task との対応を確認します。生成する成果物と順序は、選択した OpenSpec スキーマに従います。計画への対応付けは、実装による AC の達成とは区別して報告します。
+
+Grill Me は、直前の `openspec-propose` / `openspec-issue` で作成・選択したアクティブな change 1 件を基本の対象にします。会話で特定できなければ唯一のアクティブな change を選び、曖昧な場合だけ確認します。apply 前に存在する仕様・design・tasks だけをレビュー・明確化し、存在しないファイルは対象外とします。proposal は読み取り専用で参照し、実装開始済みの change や完了済みタスクは見直しません。指定 store とスキーマを維持し、Issue 由来なら AC の原文と ID を保って、存在する対象ファイル間の Scenario・Task の対応を検証します。質問や追加記述は日本語を基本とし、OpenSpec の構造キーワードは変えません。
 
 実装後の確認と archive は、利用先の既存ワークフローに従ってください。archive による PR 作成やチケットの自動完了は前提にしていません。

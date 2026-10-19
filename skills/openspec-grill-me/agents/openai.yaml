@@ -1,0 +1,4 @@
+interface:
+  display_name: "OpenSpec: Grill Me"
+  short_description: "Propose・Issue 直後のアクティブな計画1件を、既存ファイルの範囲で明確化する"
+  default_prompt: "$openspec-grill-me を使い、現在アクティブな change 1 件の apply 前に存在する仕様・design・tasks を質問で明確化し、確定回答を対象ファイルへ反映してください。"
